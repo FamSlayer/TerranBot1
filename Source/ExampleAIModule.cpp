@@ -4,6 +4,9 @@
 using namespace BWAPI;
 using namespace Filter;
 
+bool supply_depot_9 = false;
+bool barracks_12 = false;
+
 void ExampleAIModule::onStart()
 {
 	// Hello World!
@@ -111,10 +114,11 @@ void ExampleAIModule::onFrame()
 		//pos.x
 		//u->getID
 		std::string unit_name = u->getType().getName();
-		int y_pos = 200 + (unit_number++) * 20;
-		Broodwar->drawTextScreen(100, y_pos, "Unit: %s:", unit_name );// , unit_number, unit_name);// , u->getPosition().x, u->getPosition().y);  //  at (%d, %d)
-
-
+		
+		int y_pos = 20 + (unit_number++) * 15;
+		Broodwar->drawTextScreen(10, y_pos, "Unit #%d:\ttype_id - %d\tunit_id - %d:", unit_number, u->getType().getID(), u->getID());// , u->getPosition().x, u->getPosition().y);  //  at (%d, %d)
+		
+		
 
 		// If the unit is a worker unit
 		if ( u->getType().isWorker() )
@@ -142,6 +146,57 @@ void ExampleAIModule::onFrame()
 		}
 		else if ( u->getType().isResourceDepot() ) // A resource depot is a Command Center, Nexus, or Hatchery
 		{
+			// build the supply depot at 9
+			if (supplyCount >= 9 && !supply_depot_9)
+			{
+				// Retrieve a unit that is capable of constructing the supply needed
+				UnitType supplyProviderType = u->getType().getRace().getSupplyProvider();
+				Unit supplyBuilder = u->getClosestUnit(GetType == supplyProviderType.whatBuilds().first &&
+					(IsIdle || IsGatheringMinerals) &&
+					IsOwned);
+				
+				if (supplyBuilder)
+				{
+					Position scv_pos = supplyBuilder->getPosition();
+					//Broodwar->drawCircleMap(supplyBuilder->getPosition(), 10, Colors::Red);
+					Broodwar->registerEvent([scv_pos, supplyProviderType](Game*)
+					{		
+						Broodwar->drawCircleMap(scv_pos, 10, Colors::Red);
+					},
+						nullptr,	// condition
+						200);
+
+					TilePosition targetBuildLocation = Broodwar->getBuildLocation(supplyProviderType, supplyBuilder->getTilePosition());
+					if (targetBuildLocation)
+					{
+						// Register an event that draws the target build location
+						Broodwar->registerEvent([targetBuildLocation, supplyProviderType](Game*)
+						{		Broodwar->drawBoxMap(Position(targetBuildLocation),
+								Position(targetBuildLocation + supplyProviderType.tileSize()),
+								Colors::Blue);
+						},
+							nullptr,	// condition
+							supplyProviderType.buildTime() + 100);	// frames to run
+
+						// Order the builder to construct the supply structure
+						while (!supply_depot_9)
+						{
+							supply_depot_9 = supplyBuilder->build(supplyProviderType, targetBuildLocation);
+							if (supply_depot_9)
+							{
+								Broodwar << "CONSTRUCTING SUPPLY DEPOT" << std::endl;
+							}
+							else
+							{
+								Broodwar << "FAILED TO CONSTRUCT A SUPPLY DEPOT" << std::endl;
+							}
+						}
+					}
+				}
+
+				
+			}
+
 
 			// Order the depot to construct more workers! But only when it is idle.
 			if ( u->isIdle() && !u->train(u->getType().getRace().getWorker()) )
@@ -159,7 +214,8 @@ void ExampleAIModule::onFrame()
 				UnitType supplyProviderType = u->getType().getRace().getSupplyProvider();
 				static int lastChecked = 0;
 
-				// If we are supply blocked and haven't tried constructing more recently
+				// HARD CODE IN BUILDING THAT SUPPLY DEPOT AT 9
+				
 				if ( lastErr == Errors::Insufficient_Supply &&
 					lastChecked + 400 < Broodwar->getFrameCount() &&
 					Broodwar->self()->incompleteUnitCount(supplyProviderType) == 0 )
