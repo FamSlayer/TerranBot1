@@ -179,17 +179,14 @@ void ExampleAIModule::onFrame()
 							supplyProviderType.buildTime() + 100);	// frames to run
 
 						// Order the builder to construct the supply structure
-						while (!supply_depot_9)
+						supply_depot_9 = supplyBuilder->build(supplyProviderType, targetBuildLocation);
+						if (supply_depot_9)
 						{
-							supply_depot_9 = supplyBuilder->build(supplyProviderType, targetBuildLocation);
-							if (supply_depot_9)
-							{
-								Broodwar << "CONSTRUCTING SUPPLY DEPOT" << std::endl;
-							}
-							else
-							{
-								Broodwar << "FAILED TO CONSTRUCT A SUPPLY DEPOT" << std::endl;
-							}
+							Broodwar << "CONSTRUCTING SUPPLY DEPOT" << std::endl;
+						}
+						else
+						{
+							Broodwar << "FAILED TO CONSTRUCT A SUPPLY DEPOT" << std::endl;
 						}
 					}
 				}
